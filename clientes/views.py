@@ -1,63 +1,92 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.parsers import JSONParser
 from rest_framework.views import APIView
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.exceptions import NotFound
 
-from .models import Cliente
-from .serielizers import ClientesSerializer
+from .models import Cliente, Endereco
+from .serializers import ClientesSerializer, EnderecoSerializer
 
 # Create your views here.
 
-class ClienteView(APIView):
+class ClienteView(ListCreateAPIView):
+    serializer_class = ClientesSerializer
+    queryset = Cliente.objects.filter(ativo=True)
+
+    # # def get(self, request, id_cliente:int=None):                        
+    #     many=False
+
+    #     if (id_cliente):
+    #         try :
+    #             clientes = Cliente.objects.get(id=id_cliente, ativo=True)            
+    #         except Cliente.DoesNotExist:
+    #             raise NotFound("Cliente não encontrado")
+    #     else :
+    #         clientes = Cliente.objects.filter(ativo=True)
+    #         many=True
+
+    #     if (not clientes):
+    #         return Response({'detail': 'Nenhum cliente encontrado' }, status=status.HTTP_404_NOT_FOUND)
+
+    #     serializer = ClientesSerializer(clientes, many=many)
+    #     return Response(serializer.data, status=status.HTTP_200_OK)
+
+class ClienteDetailedView(RetrieveUpdateDestroyAPIView):
+    serializer_class = ClientesSerializer
+    queryset = Cliente.objects.filter(ativo=True)
     
-    def get(self, request, id_cliente:int=None):        
+    # def post(self, request):        
 
-        if (id_cliente):
-            clientes = Cliente.objects.filter(id=id_cliente)
-        else :
-            clientes = Cliente.objects.all()            
-
-        if (not clientes):
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-        serializer = ClientesSerializer(clientes, many=True)
-
-        return Response( { "clientes": serializer.data }, status=status.HTTP_200_OK)
+    #     serializer = ClientesSerializer(data=request.data)        
         
-    def post(self, request):        
+    #     if serializer.is_valid():            
+    #         serializer.save() 
+    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        serializer = ClientesSerializer(data=request.data)        
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # def put(self, request, cliente_id):
         
-        if serializer.is_valid():            
-            serializer.save() 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+    #     cliente = Cliente.objects.get(id=cliente_id)
+    #     serializer = ClientesSerializer(cliente, data=request.data)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    #     if serializer.is_valid():
+    #         serializer.save()
 
-    def put(self, request):
+    #     return Response(serializer.data, status=status.HTTP_204_NOT_CONTENT)
 
-        if request.data['id']:
+    # def delete(self, cliente_id):
 
-            cliente = Cliente.objects.get(id=request.data['id'])
-            serializer = ClientesSerializer(cliente, data=request.data)
+        
+    #     cliente = Cliente.objects.get(id=cliente_id)
+    #     cliente.delete()
 
-            if serializer.is_valid():                        
-                serializer.save()             
+    #     return Response(status=status.HTTP_204_NO_CONTENT)
 
-            return Response(serializer.data, status=status.HTTP_204_NOT_CONTENT)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request):
-
-        if request.data['id']:
-            cliente = Cliente.objects.get(id=request.data['id'])
-            cliente.delete()
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
+class MultipleFieldLookupMixin(object):
+    """
+    Apply this mixin to any view or viewset to get multiple field filtering
+    based on a `lookup_fields` attribute, instead of the default single field filtering.
+    """
+    def get_object(self):
+        queryset = self.get_queryset()             # Get the base queryset
+        queryset = self.filter_queryset(queryset)  # Apply any filter backends
+        filter = {}
+        for field in self.lookup_fields:
+            if self.kwargs[field]: # Ignore empty fields.
+                filter[field] = self.kwargs[field]
+        obj = get_object_or_404(queryset, **filter)  # Lookup the object
+        self.check_object_permissions(self.request, obj)
+        return obj
     
-class EnderecosView(APIView):
-    def get(self, request, id_cliente:int=None, id_endereco:int=None):
-        return Response( {"enderecos": "none"} )
+class EnderecosView(MultipleFieldLookupMixin, ListCreateAPIView):
+    serializer_class = EnderecoSerializer
+    queryset = Endereco.objects.all()
+    lookup_fields = ('cliente')
+
+class EnderecosDetailedView(MultipleFieldLookupMixin, RetrieveUpdateDestroyAPIView):
+    serializer_class = EnderecoSerializer
+    queryset = Endereco.objects.all()
+    lookup_fields = ('pk', 'cliente')

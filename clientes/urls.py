@@ -1,11 +1,11 @@
 from django.urls import path
 
-from .views import ClienteView, EnderecosView
+from .views import ClienteView, ClienteDetailedView, EnderecosView, EnderecosDetailedView
 
 # app_name will help us do a reverse look-up latter.
 urlpatterns = [
     path('clientes/', ClienteView.as_view()),
-    path('clientes/<int:id_cliente>', ClienteView.as_view()),
-    path('clientes/<int:id_cliente>/enderecos/', EnderecosView.as_view()),
-    path('clientes/<int:id_cliente>/enderecos/<int:id_endereco>', EnderecosView.as_view()),
+    path('clientes/<int:pk>', ClienteDetailedView.as_view()),
+    path('clientes/<int:cliente>/enderecos/', EnderecosView.as_view()),
+    path('clientes/<int:cliente>/enderecos/<int:pk>', EnderecosDetailedView.as_view()),
 ]
